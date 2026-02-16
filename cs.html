@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Context Shoveler</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-deep: #0a0a0f;
+    --bg-panel: #0d0d18;
+    --bg-surface: #111122;
+    --neon-green: #39ff14;
+    --neon-cyan: #00f0ff;
+    --neon-magenta: #ff00aa;
+    --neon-yellow: #f0ff00;
+    --text-dim: #3a3a5c;
+    --text-mid: #7a7a9a;
+    --text-bright: #c8c8e8;
+    --border-color: #1a1a2e;
+    --scanline-opacity: 0.03;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-deep);
+    color: var(--text-bright);
+    font-family: 'Share Tech Mono', monospace;
+    overflow-x: hidden;
+  }
+
+  /* CRT Scanline Overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, var(--scanline-opacity)) 2px,
+      rgba(0, 0, 0, var(--scanline-opacity)) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Subtle vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+    z-index: 9998;
+  }
+
+  .shell {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 60px;
+    min-height: 100vh;
+  }
+
+  /* ── Character Placeholder ── */
+  .character-slot {
+    width: 100%;
+    height: 140px;
+    border: 2px dashed var(--text-dim);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(57, 255, 20, 0.015) 10px,
+      rgba(57, 255, 20, 0.015) 20px
+    );
+    position: relative;
+    overflow: hidden;
+  }
+  .character-slot::before {
+  /*  content: '[ INSERT PIXEL ART GIF HERE ]';*/
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+  }
+
+  /* ── Title Block ── */
+  .title-block {
+    margin-bottom: 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .title-block h1 {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 22px;
+    color: var(--neon-green);
+    text-shadow: 0 0 20px rgba(57, 255, 20, 0.4), 0 0 60px rgba(57, 255, 20, 0.15);
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .title-block .subtitle {
+    font-size: 13px;
+    color: var(--text-mid);
+    letter-spacing: 1px;
+  }
+  .title-block .subtitle span {
+    color: var(--neon-cyan);
+  }
+
+  /* ── Control Bar ── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    padding: 14px 22px;
+    border: 2px solid;
+    border-radius: 3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.15s ease;
+    position: relative;
+    letter-spacing: 1px;
+    background: transparent;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    color: var(--neon-green);
+    border-color: var(--neon-green);
+    box-shadow: 0 0 12px rgba(57, 255, 20, 0.15), inset 0 0 12px rgba(57, 255, 20, 0.05);
+  }
+  .btn-primary:hover {
+    background: rgba(57, 255, 20, 0.1);
+    box-shadow: 0 0 24px rgba(57, 255, 20, 0.3), inset 0 0 24px rgba(57, 255, 20, 0.08);
+  }
+
+  .btn-copy {
+    color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.12), inset 0 0 12px rgba(0, 240, 255, 0.04);
+  }
+  .btn-copy:hover {
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: 0 0 24px rgba(0, 240, 255, 0.25), inset 0 0 24px rgba(0, 240, 255, 0.08);
+  }
+  .btn-copy:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .btn-clear {
+    color: var(--neon-magenta);
+    border-color: var(--neon-magenta);
+    box-shadow: 0 0 10px rgba(255, 0, 170, 0.1);
+  }
+  .btn-clear:hover {
+    background: rgba(255, 0, 170, 0.1);
+    box-shadow: 0 0 20px rgba(255, 0, 170, 0.2);
+  }
+  .btn-clear:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* ── Stats Bar ── */
+  .stats-bar {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    font-size: 12px;
+    color: var(--text-mid);
+  }
+  .stats-bar .stat-val {
+    color: var(--neon-yellow);
+    text-shadow: 0 0 8px rgba(240, 255, 0, 0.3);
+  }
+
+  /* ── File Tree ── */
+  .file-tree {
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+  }
+  .file-tree.active { display: block; }
+  .file-tree-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    color: var(--neon-magenta);
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+  .file-tree ul {
+    list-style: none;
+    padding-left: 0;
+  }
+  .file-tree li {
+    font-size: 12px;
+    padding: 3px 0;
+    color: var(--text-mid);
+  }
+  .file-tree li::before {
+    content: '├─ ';
+    color: var(--text-dim);
+  }
+  .file-tree li:last-child::before {
+    content: '└─ ';
+  }
+  .file-tree li span.ext {
+    color: var(--neon-cyan);
+    opacity: 0.7;
+  }
+
+  /* ── Output Terminal ── */
+  .output-wrap {
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    background: var(--bg-panel);
+    overflow: hidden;
+  }
+  .output-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-color);
+  }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+  .output-header span {
+    margin-left: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  #output {
+    width: 100%;
+    min-height: 350px;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 20px;
+    background: transparent;
+    color: var(--text-bright);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-all;
+    border: none;
+    outline: none;
+    resize: none;
+  }
+  #output::-webkit-scrollbar { width: 6px; }
+  #output::-webkit-scrollbar-track { background: var(--bg-panel); }
+  #output::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 3px; }
+
+  .file-tree::-webkit-scrollbar { width: 5px; }
+  .file-tree::-webkit-scrollbar-track { background: var(--bg-panel); }
+  .file-tree::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 3px; }
+
+  /* ── Empty State ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .empty-state .prompt-arrow {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 20px;
+    color: var(--neon-green);
+    animation: blink 1s step-end infinite;
+    display: block;
+    margin-bottom: 16px;
+  }
+  .empty-state p {
+    font-size: 12px;
+    line-height: 1.8;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    padding: 14px 28px;
+    border: 2px solid var(--neon-cyan);
+    background: var(--bg-deep);
+    color: var(--neon-cyan);
+    border-radius: 3px;
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.25);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+    z-index: 10000;
+    pointer-events: none;
+  }
+  .toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  /* ── Unsupported Banner ── */
+  .unsupported {
+    display: none;
+    padding: 20px;
+    border: 2px solid var(--neon-magenta);
+    border-radius: 3px;
+    background: rgba(255, 0, 170, 0.05);
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .unsupported p {
+    font-size: 12px;
+    color: var(--neon-magenta);
+    line-height: 1.8;
+  }
+
+  /* ── Progress ── */
+  .progress-bar-track {
+    height: 3px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    display: none;
+  }
+  .progress-bar-track.active { display: block; }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-green), var(--neon-cyan));
+    width: 0%;
+    transition: width 0.2s ease;
+    box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- CHARACTER GIF PLACEHOLDER -->
+  <div class="character-slot" id="characterSlot">
+          <img src="header.gif" alt="Character" style="height:100%;image-rendering:pixelated;"> 
+  </div>
+
+  <!-- TITLE -->
+  <div class="title-block">
+    <h1>The Context Shoveler</h1>
+    <div class="subtitle">// shovel your codebase into <span>LLM context</span></div>
+  </div>
+
+  <!-- UNSUPPORTED BROWSER -->
+  <div class="unsupported" id="unsupported">
+    <p>⚠ Your browser does not support the File System Access API.<br>Please use Chrome or Edge on desktop.</p>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="controls">
+    <button class="btn btn-primary" id="btnPick" onclick="pickFolder()">▸ Select Folder</button>
+    <button class="btn btn-copy" id="btnCopy" onclick="copyOutput()" disabled>◇ Copy to Clipboard</button>
+    <button class="btn btn-clear" id="btnClear" onclick="clearOutput()" disabled>✕ Clear</button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="progress-bar-track" id="progressTrack">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-bar" id="statsBar" style="display:none;">
+    <div>FILES: <span class="stat-val" id="statFiles">0</span></div>
+    <div>LINES: <span class="stat-val" id="statLines">0</span></div>
+    <div>CHARS: <span class="stat-val" id="statChars">0</span></div>
+    <div>SIZE: <span class="stat-val" id="statSize">0 KB</span></div>
+  </div>
+
+  <!-- FILE TREE -->
+  <div class="file-tree" id="fileTree">
+    <div class="file-tree-title">◈ Discovered Files</div>
+    <ul id="fileList"></ul>
+  </div>
+
+  <!-- OUTPUT TERMINAL -->
+  <div class="output-wrap">
+    <div class="output-header">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <span>output.ctx</span>
+    </div>
+    <div id="output">
+      <div class="empty-state">
+        <span class="prompt-arrow">▶_</span>
+        <p>Select a project folder to begin shoveling context.<br>Supports .js .html .css .md .json .txt</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">COPIED TO CLIPBOARD ✓</div>
+
+<script>
+const ALLOWED_EXT = new Set(['.js', '.html', '.css', '.md', '.json', '.txt']);
+const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '__pycache__', '.svelte-kit', '.nuxt', 'vendor', '.cache']);
+
+let fullOutput = '';
+
+// Feature check
+if (!('showDirectoryPicker' in window)) {
+  document.getElementById('unsupported').style.display = 'block';
+  document.getElementById('btnPick').disabled = true;
+  document.getElementById('btnPick').style.opacity = '0.3';
+}
+
+async function pickFolder() {
+  let dirHandle;
+  try {
+    dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+  } catch (e) {
+    return; // user cancelled
+  }
+
+  // Reset
+  fullOutput = '';
+  const outputEl = document.getElementById('output');
+  outputEl.textContent = '';
+  document.getElementById('fileList').innerHTML = '';
+  document.getElementById('fileTree').classList.remove('active');
+  document.getElementById('statsBar').style.display = 'none';
+  document.getElementById('btnCopy').disabled = true;
+  document.getElementById('btnClear').disabled = true;
+
+  // Show progress
+  const progressTrack = document.getElementById('progressTrack');
+  const progressFill = document.getElementById('progressFill');
+  progressTrack.classList.add('active');
+  progressFill.style.width = '0%';
+
+  // 1. Collect all file entries first
+  const fileEntries = [];
+  await collectFiles(dirHandle, '', fileEntries);
+
+  if (fileEntries.length === 0) {
+    outputEl.innerHTML = '<div class="empty-state"><span class="prompt-arrow">▶_</span><p>No matching files found in this folder.<br>Looking for: .js .html .css .md .json .txt</p></div>';
+    progressTrack.classList.remove('active');
+    return;
+  }
+
+  // Sort by path
+  fileEntries.sort((a, b) => a.path.localeCompare(b.path));
+
+  // Show file tree
+  const fileListEl = document.getElementById('fileList');
+  fileEntries.forEach(f => {
+    const li = document.createElement('li');
+    const ext = f.path.substring(f.path.lastIndexOf('.'));
+    const name = f.path.substring(0, f.path.lastIndexOf('.'));
+    li.innerHTML = `${escapeHtml(name)}<span class="ext">${escapeHtml(ext)}</span>`;
+    fileListEl.appendChild(li);
+  });
+  document.getElementById('fileTree').classList.add('active');
+
+  // 2. Read files and build output
+  let totalLines = 0;
+  let totalChars = 0;
+  const parts = [];
+
+  for (let i = 0; i < fileEntries.length; i++) {
+    const { handle, path } = fileEntries[i];
+    try {
+      const file = await handle.getFile();
+      const text = await file.text();
+      const block = `--- FILE: ${path} ---\n${text}\n`;
+      parts.push(block);
+      totalLines += text.split('\n').length;
+      totalChars += text.length;
+    } catch (e) {
+      parts.push(`--- FILE: ${path} ---\n[ERROR: Could not read file]\n`);
+    }
+    progressFill.style.width = `${Math.round(((i + 1) / fileEntries.length) * 100)}%`;
+  }
+
+  fullOutput = parts.join('\n');
+
+  // Render output
+  outputEl.textContent = fullOutput;
+
+  // Stats
+  const sizeKB = (new Blob([fullOutput]).size / 1024).toFixed(1);
+  document.getElementById('statFiles').textContent = fileEntries.length;
+  document.getElementById('statLines').textContent = totalLines.toLocaleString();
+  document.getElementById('statChars').textContent = totalChars.toLocaleString();
+  document.getElementById('statSize').textContent = sizeKB + ' KB';
+  document.getElementById('statsBar').style.display = 'flex';
+
+  // Enable buttons
+  document.getElementById('btnCopy').disabled = false;
+  document.getElementById('btnClear').disabled = false;
+
+  // Hide progress
+  setTimeout(() => { progressTrack.classList.remove('active'); }, 500);
+}
+
+async function collectFiles(dirHandle, currentPath, results) {
+  for await (const [name, handle] of dirHandle) {
+    if (handle.kind === 'directory') {
+      if (IGNORED_DIRS.has(name)) continue;
+      const subPath = currentPath ? `${currentPath}/${name}` : name;
+      await collectFiles(handle, subPath, results);
+    } else {
+      const ext = name.substring(name.lastIndexOf('.')).toLowerCase();
+      if (ALLOWED_EXT.has(ext)) {
+        const filePath = currentPath ? `${currentPath}/${name}` : name;
+        results.push({ handle, path: filePath });
+      }
+    }
+  }
+}
+
+async function copyOutput() {
+  if (!fullOutput) return;
+  try {
+    await navigator.clipboard.writeText(fullOutput);
+    showToast();
+  } catch (e) {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = fullOutput;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast();
+  }
+}
+
+function clearOutput() {
+  fullOutput = '';
+  document.getElementById('output').innerHTML = '<div class="empty-state"><span class="prompt-arrow">▶_</span><p>Select a project folder to begin shoveling context.<br>Supports .js .html .css .md .json .txt</p></div>';
+  document.getElementById('fileTree').classList.remove('active');
+  document.getElementById('fileList').innerHTML = '';
+  document.getElementById('statsBar').style.display = 'none';
+  document.getElementById('btnCopy').disabled = true;
+  document.getElementById('btnClear').disabled = true;
+}
+
+function showToast() {
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+
+</body>
+</html>
