@@ -23,19 +23,3 @@
 2. Click **"Select Folder"** and choose your project directory.
 3. Click **"Copy to Clipboard"**.
 4. Paste the entire block into Claude or GPT to provide instant, full-codebase context.
-
----
-
-### 📅 The 30-Day Ship Challenge
-This is **Project #1** in my mission to ship one new AI-powered project every day. 
-
-**Next Up:** Day 2 — *The Sprite Sheet Slicer* ```
-
----
-
-### 💡 Why this works for you
-* **The GIF:** Placing `header.gif` at the top immediately links this tool to your game development brand.
-* **The Link:** Putting the GitHub Pages link prominently at the top ensures that anyone (including recruiters or scouts) can test it in one click.
-* **The Tech Stack:** Mentioning the **File System Access API** and your use of **Mac** development shows you're building modern, browser-based tools.
-
-**Would you like me to help you draft the "Day 2" announcement for your social media now that Day 1 is officially ready to ship?**
